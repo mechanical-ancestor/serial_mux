@@ -1,0 +1,9 @@
+serial = { dev_path = "/dev/ttyACM0", baud_rate = 115200 }
+
+[[routes]]
+socket_path = "/tmp/test1.sock"
+upstream = { header = [0x4D, 0x41], data_len = 13, crc = "CRC16" }
+
+[[routes]]
+socket_path = "/tmp/test2.sock"
+upstream = { header = [0x4D, 0x41], data_len = 13, crc = "CRC32" }
