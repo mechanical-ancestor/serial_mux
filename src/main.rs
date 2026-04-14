@@ -1,3 +1,5 @@
+use std::io;
+
 use anyhow::Context;
 use clap::arg;
 use futures_lite::{FutureExt, StreamExt};
@@ -36,22 +38,25 @@ async fn main() -> anyhow::Result<()> {
             unix_socket
                 .send_to(&packet.data, target)
                 .await
-                .map_err(|e| log::error!("Failed to send packet: {}", e))
+                .map_err(|e| match e.kind() {
+                    io::ErrorKind::NotFound => log::warn!("{} was not found", target.display()),
+                    _ => log::error!("Failed to send packet: {e}"),
+                })
                 .ok()
         })
         .for_each(drop)
         .or(async {
-            // Just write all received packets to the downstream serial port.
+            // Just forward all received packets to the downstream serial port.
             let mut buf = [0; 1024];
             while let Ok(len) = unix_socket
                 .recv(&mut buf)
                 .await
-                .map_err(|e| log::error!("Failed to receive packet: {}", e))
+                .map_err(|e| log::error!("Failed to receive packet: {e}"))
             {
                 downstream
                     .write_all(&buf[..len])
                     .await
-                    .map_err(|e| log::error!("Failed to write to serial: {}", e))
+                    .map_err(|e| log::error!("Failed to write to serial: {e}"))
                     .ok();
             }
         })
