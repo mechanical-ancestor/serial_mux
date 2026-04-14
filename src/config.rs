@@ -1,8 +1,9 @@
 use std::{
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
+use anyhow::anyhow;
 use serde::Deserialize;
 
 use crate::serial::{CRCAlgorithm, Header};
@@ -16,7 +17,12 @@ pub struct Config {
 
 impl Config {
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
-        let config_file = fs::read_to_string(path.as_ref())?;
+        let config_file = fs::read_to_string(path.as_ref()).map_err(|e| match e.kind() {
+            io::ErrorKind::NotFound => {
+                anyhow!("Config file: {} was not found", path.as_ref().display())
+            }
+            _ => From::from(e),
+        })?;
         toml::from_str::<Self>(&config_file).map_err(From::from)
     }
 }
