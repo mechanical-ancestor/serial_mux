@@ -12,7 +12,7 @@ mod serial;
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
     let mut args = clap::Command::new("serial_mux")
-        .arg(arg!(-c --config <CONFIG> "Optionally sets a config file to use"))
+        .arg(arg!(-c --config <CONFIG> "Config file to use, default to ./config.toml"))
         .get_matches();
     let config_path = args
         .remove_one::<String>("config")

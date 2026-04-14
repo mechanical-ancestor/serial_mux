@@ -1,10 +1,16 @@
-serial = { dev_path = "/dev/ttyACM0", baud_rate = 115200 }
-bind_socket = "/tmp/serial_mux.sock"
+serial = { dev_path = "/dev/ttyACM0", baud_rate = 115200 } # Serial device path and baud rate
+bind_socket = "/tmp/serial_mux.sock" # Unix (datagram) socket address bound by this program for receiving data
 
-[[routes]]
-socket_path = "/tmp/serial_vision.sock"
+[[routes]] # One routing/forwarding rule
+socket_path = "/tmp/serial_vision.sock" # If matched, send to this Unix (datagram) socket
+# Configuration for incoming data format from serial port
+# header: header frame (only 2 u8 supported)
+# data_len: data segment length, excluding header and crc
+# crc: optional field, can only be CRC16 or CRC32. When crc feature is enabled, performs CRC validation on the packet; otherwise only acts as a placeholder
 upstream = { header = [0x4D, 0x41], data_len = 13, crc = "CRC16" }
 
 [[routes]]
 socket_path = "/tmp/serial_nav.sock"
 upstream = { header = [0x4D, 0x42], data_len = 17, crc = "CRC16" }
+
+# More routing rules can be added below
