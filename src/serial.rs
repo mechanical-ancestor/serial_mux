@@ -24,9 +24,7 @@ pub fn new(config: &Config) -> anyhow::Result<impl Stream<Item = SerialPacket>> 
 
     let serial = Framed::new(serial, SerialCodec(upstreams))
         .map_while(Result::ok)
-        .inspect(|p| {
-            dbg!(p);
-        });
+        .inspect(|packet| log::debug!("{:x?}", &packet.data));
 
     Ok(serial)
 }
