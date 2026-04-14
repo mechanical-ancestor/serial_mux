@@ -52,8 +52,14 @@ pub struct SerialPacket {
 }
 
 impl SerialPacketConfig {
+    const fn crc_len(&self) -> usize {
+        match &self.crc {
+            Some(crc) => crc.len(),
+            None => 0,
+        }
+    }
     const fn packet_len(&self) -> usize {
-        HEADER_SIZE + self.data_len + self.crc.len()
+        HEADER_SIZE + self.data_len + self.crc_len()
     }
 }
 
@@ -110,7 +116,7 @@ impl codec::Decoder for SerialCodec {
         let mut packet = src.split_to(packet_len).freeze();
 
         #[allow(unused_variables)]
-        let crc_bytes = packet.split_off(packet_len - config.crc.len());
+        let crc_bytes = packet.split_off(packet_len - config.crc_len());
 
         #[cfg(feature = "crc")]
         {

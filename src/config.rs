@@ -39,7 +39,7 @@ pub struct Route {
 pub struct SerialPacketConfig {
     pub header: Header,
     pub data_len: usize,
-    pub crc: CRCAlgorithm,
+    pub crc: Option<CRCAlgorithm>,
 }
 
 #[expect(unused)]
