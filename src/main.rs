@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::arg;
-use futures_lite::StreamExt;
-use tokio::net::UnixDatagram;
+use futures_lite::{FutureExt, StreamExt};
+use tokio::{io::AsyncWriteExt as _, net::UnixDatagram};
 
 mod config;
 mod serial;
@@ -18,7 +18,11 @@ async fn main() -> anyhow::Result<()> {
 
     let config = config::Config::new(config_path).context("Failed to load config")?;
 
-    let upstreams = serial::new(&config)?;
+    let (upstreams, mut downstream) = serial::new(&config)?;
+
+    if config.bind_socket.exists() {
+        std::fs::remove_file(&config.bind_socket)?;
+    }
 
     let unix_socket = UnixDatagram::bind(&config.bind_socket)?;
 
@@ -36,6 +40,21 @@ async fn main() -> anyhow::Result<()> {
                 .ok()
         })
         .for_each(drop)
+        .or(async {
+            // Just write all received packets to the downstream serial port.
+            let mut buf = [0; 1024];
+            while let Ok(len) = unix_socket
+                .recv(&mut buf)
+                .await
+                .map_err(|e| log::error!("Failed to receive packet: {}", e))
+            {
+                downstream
+                    .write_all(&buf[..len])
+                    .await
+                    .map_err(|e| log::error!("Failed to write to serial: {}", e))
+                    .ok();
+            }
+        })
         .await;
 
     Ok(())

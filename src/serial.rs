@@ -2,7 +2,7 @@ use anyhow::Context;
 use bytes::{Buf as _, Bytes, BytesMut};
 use futures_lite::{Stream, StreamExt};
 use serde::Deserialize;
-use tokio_serial::SerialPortBuilderExt as _;
+use tokio_serial::{SerialPortBuilderExt as _, SerialStream};
 use tokio_util::codec::{self, Framed};
 
 use crate::config::{Config, SerialPacketConfig};
@@ -10,7 +10,12 @@ use crate::config::{Config, SerialPacketConfig};
 pub const HEADER_SIZE: usize = 2;
 pub type Header = [u8; HEADER_SIZE];
 
-pub fn new(config: &Config) -> anyhow::Result<impl Stream<Item = SerialPacket>> {
+pub fn new(
+    config: &Config,
+) -> anyhow::Result<(
+    impl Stream<Item = SerialPacket>,
+    tokio::io::WriteHalf<SerialStream>,
+)> {
     let serial = tokio_serial::new(&config.serial.dev_path, config.serial.baud_rate)
         .open_native_async()
         .context("Failed to open serial port")?;
@@ -22,11 +27,13 @@ pub fn new(config: &Config) -> anyhow::Result<impl Stream<Item = SerialPacket>> 
         // Codec need to access all upstreams.
         .collect::<Vec<_>>();
 
-    let serial = Framed::new(serial, SerialCodec(upstreams))
+    let (serial_stream, serial_sink) = tokio::io::split(serial);
+
+    let serial_stream = Framed::new(serial_stream, SerialCodec(upstreams))
         .map_while(Result::ok)
         .inspect(|packet| log::debug!("{:x?}", &packet.data));
 
-    Ok(serial)
+    Ok((serial_stream, serial_sink))
 }
 
 #[cfg(feature = "crc")]
