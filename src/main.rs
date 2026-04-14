@@ -1,10 +1,10 @@
 use anyhow::Context;
 use clap::arg;
 use futures_lite::StreamExt;
+use tokio::net::UnixDatagram;
 
 mod config;
 mod serial;
-mod socket;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
@@ -20,27 +20,17 @@ async fn main() -> anyhow::Result<()> {
 
     let upstreams = serial::new(&config)?;
 
-    let unix_sockets = config
-        .routes
-        .iter()
-        .map(|route| {
-            Ok((
-                route.upstream.header,
-                socket::Socket::new(route.socket_path.clone())?,
-            ))
-        })
-        // Why not HashMap? Because we probably have several routes,
-        // it's not worth to use HashMap.
-        .collect::<Result<Vec<_>, anyhow::Error>>()?;
+    let unix_socket = UnixDatagram::bind(&config.bind_socket)?;
 
     upstreams
         // Thanks to UnixDatagram only requires &self to send data,
         // this async closure implements FnMut.
         .then(async |packet| {
-            unix_sockets
-                .iter()
-                .find_map(|(header, socket)| (header == &packet.header).then_some(socket))?
-                .send(&packet.data)
+            let target = config.routes.iter().find_map(|route| {
+                (route.upstream.header == packet.header).then_some(&route.socket_path)
+            })?;
+            unix_socket
+                .send_to(&packet.data, target)
                 .await
                 .map_err(|e| log::error!("Failed to send packet: {}", e))
                 .ok()

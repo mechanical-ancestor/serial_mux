@@ -10,6 +10,7 @@ use crate::serial::{CRCAlgorithm, Header};
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub serial: SerialConfig,
+    pub bind_socket: PathBuf,
     pub routes: Vec<Route>,
 }
 

@@ -1,9 +1,10 @@
 serial = { dev_path = "/dev/ttyACM0", baud_rate = 115200 }
+bind_socket = "/tmp/serial_mux.sock"
 
 [[routes]]
-socket_path = "/tmp/test1.sock"
+socket_path = "/tmp/serial_vision.sock"
 upstream = { header = [0x4D, 0x41], data_len = 13, crc = "CRC16" }
 
 [[routes]]
-socket_path = "/tmp/test2.sock"
-upstream = { header = [0x4D, 0x41], data_len = 13, crc = "CRC32" }
+socket_path = "/tmp/serial_nav.sock"
+upstream = { header = [0x4D, 0x42], data_len = 17, crc = "CRC16" }
