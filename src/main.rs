@@ -10,7 +10,10 @@ mod serial;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
-    env_logger::init();
+    env_logger::Builder::from_default_env()
+        .format_timestamp_millis()
+        .init();
+
     let mut args = clap::Command::new("serial_mux")
         .arg(arg!(-c --config <CONFIG> "Config file to use, default to ./config.toml"))
         .get_matches();
